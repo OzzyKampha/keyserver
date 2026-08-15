@@ -1,15 +1,11 @@
-<div class="container">
+<%- include('header.html') %>
 
-  <div class="header clearfix">
-    <h3 class="text-muted">Mailvelope Key Server</h3>
+<main id="main" class="container page">
+
+  <div class="card status-card">
+    <h1><%= __('removal_success', {email}) %></h1>
   </div>
 
-  <div class="row marketing">
-    <div class="col-lg-12">
-      <h3><%= __('removal_success', {email}) %></h3>
-    </div> <!-- /col-lg-12 -->
-  </div>
+</main>
 
-  <%- include('footer.html') %>
-
-</div> <!-- /container -->
+<%- include('footer.html') %>

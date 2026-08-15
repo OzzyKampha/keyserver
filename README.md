@@ -347,14 +347,114 @@ For production you should use a service like [Amazon SES](https://aws.amazon.com
 Docker images are built from this repository and available at ghcr. You can use the sample docker-compose.yml - review it and populate an .env file with the required [settings](#Settings) before running the server. `BASE_URL` must be set to the public-facing URL of your key server. To create the database automatically, the following parameters are needed in .env file:
 
 ```
-BASE_URL=https://keyserver.example.com
+BASE_URL=https://keyserver
 MONGO_URI=mongodb:27017/keyserver_db
 MONGO_USER=keyserver
 MONGO_PASS=somepassword
 MONGO_INITDB_DATABASE=keyserver_db
 ```
 
-The sample docker-compose.yml also contains common traefik settings, but you may need to adjust them for your own reverse proxy.
+The sample docker-compose.yml uses [Caddy](https://caddyserver.com/) as a reverse proxy in front of the key server. The included `Caddyfile` terminates TLS with Caddy's internal certificate authority (self-signed, suitable for internal-only deployments such as this one) and adds security headers (HSTS, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`). If the key server needs to be reachable from the public internet instead, replace `tls internal` in the `Caddyfile` with your real hostname so Caddy obtains a certificate via ACME/Let's Encrypt automatically, and adjust `BASE_URL` accordingly.
+
+#### Restricting access by network
+
+Caddy only proxies requests coming from the networks listed in `KEYSERVER_ALLOWED_IPS`, a space separated list of CIDRs set in `.env`. Everything else is answered with a 403 and never reaches the key server:
+
+```
+KEYSERVER_ALLOWED_IPS=10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.1/32 ::1
+```
+
+Narrow this to the ranges that should actually have access. Two behaviours are worth knowing, both verified against Caddy:
+
+* Removing the line falls back to the defaults shown above (the RFC 1918 ranges plus loopback).
+* Setting it to an empty value denies **every** client, including loopback. This fails closed rather than open, but it does mean a blank value locks everyone out.
+
+The matcher uses `remote_ip`, the address on the connection, which is correct while Caddy is the edge. If you put a load balancer in front of Caddy, switch to `client_ip` and declare the balancer under `servers { trusted_proxies }` — otherwise every request appears to originate from the balancer and the allowlist no longer discriminates.
+
+Note that the verification links in outgoing emails point at `BASE_URL`. If recipients open them from outside the allowed ranges the request is refused, so the allowlist needs to cover wherever users read their mail.
+
+Caddy writes a JSON access log to stdout covering both served and refused requests, so `docker compose logs caddy` carries the audit trail.
+
+#### Geographic filtering
+
+Requests from outside the countries listed in `KEYSERVER_ALLOWED_COUNTRIES` (space separated ISO 3166-1 alpha-2 codes, default `NO`) are refused with a 403.
+
+The check applies only to clients that have a geographic location. **Private addresses do not**, and this is the part that bites: the lookup returns `UNK` for any address the database has no record of, and `UNK` matches no allow list, so a bare geo matcher refuses every RFC 1918 client — that is, all your internal traffic. The `Caddyfile` therefore excludes private ranges from the check explicitly rather than trusting the database to place them.
+
+Note also that the geo matcher and its bypass both use `client_ip`, while the network allowlist uses `remote_ip`. The geolocation module reads the client IP itself, so the bypass has to use the same notion of the address or the two would disagree. With no `trusted_proxies` configured the two are identical; behind a load balancer they are not.
+
+Verified against a synthetic country database:
+
+| Client                        | Result |
+| :---------------------------- | :----- |
+| internal, no geo data         | served |
+| Norway                        | served |
+| Russia                        | 403    |
+| United States (not permitted) | 403    |
+| public address, unknown to the database | 403 |
+
+A country database is required at `geoip/country.mmdb` and **Caddy will not start without it** — see [geoip/README.md](geoip/README.md) for where to get one and how to keep it current. It is deliberately not in version control.
+
+One caveat worth being clear about: while `KEYSERVER_ALLOWED_IPS` permits only private ranges, the geo check never fires, because those clients are refused by the allowlist before it and internal clients bypass it. Geographic filtering only starts doing work once the allowlist is widened to admit public addresses. To remove it, delete the `@geo_refused` matcher and its `handle` block from the `Caddyfile`.
+
+#### Web application firewall
+
+Caddy runs [OWASP Coraza](https://coraza.io/) with the [OWASP Core Rule Set](https://coreruleset.org/). Coraza is a Caddy module and modules are compiled in, so the proxy is built from `caddy.Dockerfile` rather than pulled from the stock image. `docker compose up --build` handles this; the build needs network access to `proxy.golang.org`.
+
+The rule engine is set by `KEYSERVER_WAF_MODE`, defaulting to `On`:
+
+| Value           | Behaviour                                        |
+| :-------------- | :----------------------------------------------- |
+| `On`            | Refuses requests that exceed the anomaly score    |
+| `DetectionOnly` | Logs what it would have refused, refuses nothing  |
+| `Off`           | Disables the WAF                                  |
+
+##### The key upload exclusion
+
+An armored OpenPGP key is a high-entropy base64 block, and the Core Rule Set matches inside it. The command injection rules 932230, 932250 and 932370 fire on the key material for an anomaly score of 10 against a threshold of 5, and the upload is refused.
+
+This does not affect every key, and which keys it affects cannot be predicted. Measured across 13 keys — the six fixtures plus seven generated across RSA 2048/3072/4096 and curve25519, P-256 and P-521 — two were refused with the exclusion removed: a 9.7 kB RSA 4096 key and a 714 byte NIST P-256 key. A 16 kB RSA 4096 key was not. It tracks neither algorithm nor size, only whether the base64 happens to contain a byte sequence matching one of the regexes, so roughly one key in seven in that sample. In practice that means some users' keys are refused and others are not, with no pattern an operator could reason about.
+
+That unpredictability is the reason the exclusion is scoped by rule tag rather than by rule ID: 932370 only appeared once a wider set of keys was tested, and pinning the two rules seen first would have left it to fail later on somebody's key.
+
+The `Caddyfile` takes the key itself out of the reach of those rules on `/api/v1/key` and `/pks/add`, rather than switching them off for those endpoints:
+
+```
+ctl:ruleRemoveTargetByTag=attack-rce;REQUEST_BODY
+ctl:ruleRemoveTargetByTag=attack-rce;ARGS:publicKeyArmored
+ctl:ruleRemoveTargetByTag=attack-rce;ARGS:keytext
+ctl:ruleRemoveTargetByTag=attack-rce;ARGS:/^json\..*/
+```
+
+Both the raw body and the parsed JSON collection are listed because, depending on the key, the rules matched one or the other: an earlier version excluding only the raw body still refused `key4`, while the other keys tested alongside it were served.
+
+What this leaves in force on those two endpoints:
+
+* the command injection rules still run, and still inspect the URI, query string, headers and cookies
+* every other rule family, SQL injection and XSS included, still inspects the request body
+
+Verified with `SecRuleEngine On` against 13 keys — the six in `test/fixtures` (RSA 1024/2048/4096 and ed25519) plus seven generated across RSA 2048/3072/4096, a multi-user-ID RSA 4096, curve25519, P-256 and P-521 — over both the JSON REST endpoint and the HKP form endpoint. All 13 are served, while command injection in the query string of the key endpoints, SQL injection in the key endpoint's JSON body, and attacks on other paths are all refused.
+
+##### Tuning
+
+Thirteen keys are not every key. A key with a different byte sequence may match a rule family this exclusion does not cover, and the symptom is one user's upload being refused while everyone else's works. Drop to `DetectionOnly` and read the audit log:
+
+```shell
+docker compose logs caddy | grep 949110   # requests that exceeded the anomaly score
+docker compose logs caddy | grep -o 'id "[0-9]\{6\}"' | sort | uniq -c | sort -rn
+```
+
+Extend the exclusion with the rule tag or ID involved, scoped the same way, rather than lowering the anomaly threshold globally or dropping whole rule families for the path.
+
+### Theming
+
+The web UI follows the conventions of [Designsystemet](https://designsystemet.no/), Digdir's design system for the Norwegian public sector: Inter as the typeface, a layered token model, a rem-based sizing scale, understated corner radii and a high-visibility focus ring.
+
+All design tokens live in `:root` in `src/static/css/politiet.css` and are named after their Designsystemet counterparts (`--ds-color-accent-base-default`, `--ds-color-neutral-text-subtle`, and so on). No component rule hardcodes a colour, so adjusting the palette — for example to the exact values from the Politiet design manual — only means editing that one block.
+
+Inter is self-hosted under `src/static/fonts/` (SIL Open Font License 1.1, see `inter-LICENSE.txt`) rather than loaded from a CDN, both so the server has no third-party runtime dependency and so the page stays within the `default-src 'self'` content security policy enabled by `CSP_HEADER`.
+
+The brand mark in the header is a generic shield, not the Politiet emblem. Use of the official emblem is restricted, so replacing it is a decision for whoever owns the visual identity.
 
 ## Run tests
 

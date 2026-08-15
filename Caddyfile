@@ -1,0 +1,134 @@
+{
+	# coraza_waf is a plugin directive, so it has no place in Caddy's standard
+	# directive order and has to be positioned explicitly. It must run before
+	# the request is proxied.
+	order coraza_waf first
+}
+
+keyserver {
+	tls internal
+
+	encode gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# Access is restricted to the networks listed in KEYSERVER_ALLOWED_IPS
+	# (space separated CIDRs, see .env). The default covers the RFC 1918
+	# ranges and loopback, so the server is unreachable from the internet
+	# even if the port is exposed by accident.
+	#
+	# remote_ip matches the address Caddy sees on the connection, which is
+	# correct while Caddy is the edge. If you later put a load balancer in
+	# front of it, switch to `client_ip` and declare the balancer under
+	# `servers { trusted_proxies }` — otherwise every request appears to
+	# come from the balancer and the allowlist stops discriminating.
+	@allowed remote_ip {$KEYSERVER_ALLOWED_IPS:10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.1/32 ::1}
+
+	# Geographic filtering, applied only to clients that have a geographic
+	# location — which private addresses do not.
+	#
+	# The lookup returns "UNK" for any address the database has no record
+	# for, and "UNK" is not in an allow list, so a bare geo matcher refuses
+	# every RFC 1918 client. Internal traffic is therefore excluded from the
+	# check rather than relying on the database to place it.
+	#
+	# This uses client_ip, not remote_ip, because the geolocation module
+	# reads the client IP itself; the two matchers have to agree on which
+	# address they are talking about or the bypass will not line up with the
+	# lookup. With no trusted_proxies configured, client_ip is the connection
+	# address, same as remote_ip.
+	@geo_refused {
+		not client_ip private_ranges
+		not maxmind_geolocation {
+			db_path /etc/caddy/geoip/country.mmdb
+			allow_countries {$KEYSERVER_ALLOWED_COUNTRIES:NO}
+		}
+	}
+
+	handle @geo_refused {
+		respond "This key server is not available from your location." 403
+	}
+
+	handle @allowed {
+		# OWASP Coraza with the Core Rule Set.
+		#
+		# SecRuleEngine defaults to On. The base64 false positive that made
+		# enforcement unusable is handled by the targeted exclusion below,
+		# verified against every key fixture in test/fixtures. Set
+		# KEYSERVER_WAF_MODE=DetectionOnly to log without refusing, which is
+		# worth doing for a while after any rule set or key format change.
+		coraza_waf {
+			# Mounts the embedded Core Rule Set. Without this flag the
+			# @-prefixed includes below cannot be resolved.
+			load_owasp_crs
+
+			directives `
+			Include @coraza.conf-recommended
+			Include @crs-setup.conf.example
+			Include @owasp_crs/*.conf
+
+			SecRuleEngine {$KEYSERVER_WAF_MODE:On}
+
+			# An armored key runs to tens of kilobytes and arrives as a JSON
+			# body or a form field, neither of which counts as a file upload,
+			# so the no-files limit is the one that has to accommodate it.
+			SecRequestBodyLimit 1048576
+			SecRequestBodyNoFilesLimit 524288
+
+			# An armored key is a high-entropy base64 block, and the CRS
+			# Unix command injection rules match inside it: uploading a
+			# valid key scores 10 against an inbound threshold of 5, so
+			# without this every upload would be refused.
+			#
+			# The exclusion takes the key itself out of the reach of the
+			# command injection rules, rather than switching those rules
+			# off for the endpoint. They still run here, and still see the
+			# URI, the query string, headers and cookies — only the fields
+			# that carry the armored key are exempt, and only for the rules
+			# tagged attack-rce. Every other rule family, SQL injection and
+			# XSS included, still inspects the body.
+			#
+			# Both the raw body and the parsed JSON collection are covered:
+			# depending on the key, the rules matched one or the other.
+			SecRule REQUEST_URI "@rx ^/(api/v1/key|pks/add)" \
+				"id:900001,\
+				phase:1,\
+				pass,\
+				nolog,\
+				t:none,\
+				ctl:ruleRemoveTargetByTag=attack-rce;REQUEST_BODY,\
+				ctl:ruleRemoveTargetByTag=attack-rce;ARGS:publicKeyArmored,\
+				ctl:ruleRemoveTargetByTag=attack-rce;ARGS:keytext,\
+				ctl:ruleRemoveTargetByTag=attack-rce;ARGS:/^json\..*/"
+
+			# Audit to stdout so refusals and near-misses land in
+			# docker compose logs alongside the access log.
+			SecAuditEngine RelevantOnly
+			SecAuditLogParts ABIJDEFHZ
+			SecAuditLog /dev/stdout
+			SecAuditLogFormat JSON
+			SecAuditLogType Serial
+			`
+		}
+
+		reverse_proxy keyserver:3000
+	}
+
+	# Anything else never reaches the key server.
+	handle {
+		respond "This key server is restricted to the internal network." 403
+	}
+
+	# Access log to stdout, so `docker compose logs caddy` carries the audit
+	# trail, including the requests that were refused.
+	log {
+		output stdout
+		format json
+	}
+}
