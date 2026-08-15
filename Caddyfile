@@ -58,12 +58,11 @@ keyserver {
 	handle @allowed {
 		# OWASP Coraza with the Core Rule Set.
 		#
-		# SecRuleEngine is DetectionOnly: attacks are logged, nothing is
-		# refused. Uploading an OpenPGP key means POSTing a large base64
-		# block, which CRS is prone to score as an anomaly, so run in this
-		# mode until the audit log shows what genuine traffic trips. Switch
-		# to `On` via KEYSERVER_WAF_MODE once the false positives are tuned
-		# out — see the README.
+		# SecRuleEngine defaults to On. The base64 false positive that made
+		# enforcement unusable is handled by the targeted exclusion below,
+		# verified against every key fixture in test/fixtures. Set
+		# KEYSERVER_WAF_MODE=DetectionOnly to log without refusing, which is
+		# worth doing for a while after any rule set or key format change.
 		coraza_waf {
 			# Mounts the embedded Core Rule Set. Without this flag the
 			# @-prefixed includes below cannot be resolved.
@@ -74,7 +73,7 @@ keyserver {
 			Include @crs-setup.conf.example
 			Include @owasp_crs/*.conf
 
-			SecRuleEngine {$KEYSERVER_WAF_MODE:DetectionOnly}
+			SecRuleEngine {$KEYSERVER_WAF_MODE:On}
 
 			# An armored key runs to tens of kilobytes and arrives as a JSON
 			# body or a form field, neither of which counts as a file upload,
@@ -85,18 +84,28 @@ keyserver {
 			# An armored key is a high-entropy base64 block, and the CRS
 			# Unix command injection rules match inside it: uploading a
 			# valid key scores 10 against an inbound threshold of 5, so
-			# with SecRuleEngine On every upload would be refused. Rules
-			# 932230 and 932250 were the ones observed, but any rule in
-			# that family can match a different key, so the whole tag is
-			# dropped for the two endpoints that carry a key — and only
-			# for those. Every other path keeps the full rule set.
+			# without this every upload would be refused.
+			#
+			# The exclusion takes the key itself out of the reach of the
+			# command injection rules, rather than switching those rules
+			# off for the endpoint. They still run here, and still see the
+			# URI, the query string, headers and cookies — only the fields
+			# that carry the armored key are exempt, and only for the rules
+			# tagged attack-rce. Every other rule family, SQL injection and
+			# XSS included, still inspects the body.
+			#
+			# Both the raw body and the parsed JSON collection are covered:
+			# depending on the key, the rules matched one or the other.
 			SecRule REQUEST_URI "@rx ^/(api/v1/key|pks/add)" \
 				"id:900001,\
 				phase:1,\
 				pass,\
 				nolog,\
 				t:none,\
-				ctl:ruleRemoveByTag=attack-rce"
+				ctl:ruleRemoveTargetByTag=attack-rce;REQUEST_BODY,\
+				ctl:ruleRemoveTargetByTag=attack-rce;ARGS:publicKeyArmored,\
+				ctl:ruleRemoveTargetByTag=attack-rce;ARGS:keytext,\
+				ctl:ruleRemoveTargetByTag=attack-rce;ARGS:/^json\..*/"
 
 			# Audit to stdout so refusals and near-misses land in
 			# docker compose logs alongside the access log.

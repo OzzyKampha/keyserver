@@ -401,26 +401,46 @@ One caveat worth being clear about: while `KEYSERVER_ALLOWED_IPS` permits only p
 
 Caddy runs [OWASP Coraza](https://coraza.io/) with the [OWASP Core Rule Set](https://coreruleset.org/). Coraza is a Caddy module and modules are compiled in, so the proxy is built from `caddy.Dockerfile` rather than pulled from the stock image. `docker compose up --build` handles this; the build needs network access to `proxy.golang.org`.
 
-The rule engine is set by `KEYSERVER_WAF_MODE`:
+The rule engine is set by `KEYSERVER_WAF_MODE`, defaulting to `On`:
 
 | Value           | Behaviour                                        |
 | :-------------- | :----------------------------------------------- |
-| `DetectionOnly` | Logs what it would have refused, refuses nothing  |
 | `On`            | Refuses requests that exceed the anomaly score    |
+| `DetectionOnly` | Logs what it would have refused, refuses nothing  |
 | `Off`           | Disables the WAF                                  |
 
-**Start on `DetectionOnly`.** An armored OpenPGP key is a high-entropy base64 block, and the Core Rule Set matches inside it: uploading a valid key from `test/fixtures` triggers rules 932230 and 932250 (`Remote Command Execution: Unix Command Injection`) for an inbound anomaly score of 10, against a default threshold of 5. Left alone, `On` would refuse every key upload.
+##### The key upload exclusion
 
-The `Caddyfile` therefore drops the `attack-rce` rule tag for `/api/v1/key` and `/pks/add`, the two endpoints that carry a key. The exclusion is scoped to those paths, so command injection rules still apply everywhere else. This was verified with `SecRuleEngine On`: key uploads reach the key server, while SQL injection, XSS, and command injection against other paths are all refused.
+An armored OpenPGP key is a high-entropy base64 block, and the Core Rule Set matches inside it. Uploading a valid key triggers the Unix command injection rules 932230 and 932250 for an anomaly score of 10 against a threshold of 5, so enforcing without tuning would refuse every upload.
 
-Before switching to `On`, run `DetectionOnly` against real traffic and read the audit log. Other rule families may match on keys this project's fixtures don't cover, and each one needs the same treatment:
+The `Caddyfile` takes the key itself out of the reach of those rules on `/api/v1/key` and `/pks/add`, rather than switching them off for those endpoints:
+
+```
+ctl:ruleRemoveTargetByTag=attack-rce;REQUEST_BODY
+ctl:ruleRemoveTargetByTag=attack-rce;ARGS:publicKeyArmored
+ctl:ruleRemoveTargetByTag=attack-rce;ARGS:keytext
+ctl:ruleRemoveTargetByTag=attack-rce;ARGS:/^json\..*/
+```
+
+Both the raw body and the parsed JSON collection are listed because, depending on the key, the rules matched one or the other: an earlier version excluding only the raw body still refused `key4`, while the other keys tested alongside it were served.
+
+What this leaves in force on those two endpoints:
+
+* the command injection rules still run, and still inspect the URI, query string, headers and cookies
+* every other rule family, SQL injection and XSS included, still inspects the request body
+
+Verified with `SecRuleEngine On` against all six keys in `test/fixtures`: every upload is served, while command injection in the query string of the key endpoints, SQL injection in the key endpoint's JSON body, and attacks on other paths are all refused.
+
+##### Tuning
+
+The fixtures are not every key. A key with a different byte sequence may match a rule family this exclusion does not cover, and the symptom is a refused upload. Drop to `DetectionOnly` and read the audit log:
 
 ```shell
 docker compose logs caddy | grep 949110   # requests that exceeded the anomaly score
 docker compose logs caddy | grep -o 'id "[0-9]\{6\}"' | sort | uniq -c | sort -rn
 ```
 
-Add any further false positives to the exclusion rule in the `Caddyfile` rather than lowering the anomaly threshold globally.
+Extend the exclusion with the rule tag or ID involved, scoped the same way, rather than lowering the anomaly threshold globally or dropping whole rule families for the path.
 
 ### Theming
 
