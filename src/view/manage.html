@@ -14,9 +14,12 @@
       <div class="progress-bar progress-bar-striped active" role="progressbar"></div>
     </div>
     <form action="/pks/add" method="post">
-      <p><textarea class="form-control" name="keytext" rows="6" spellcheck="false" placeholder="Paste PGP PUBLIC KEY BLOCK here ..." required></textarea></p>
+      <div class="field">
+        <label class="field-label" for="keytext">Public key</label>
+        <p class="field-description" id="keytext-desc">Paste the full PGP public key block, including the BEGIN and END lines. You will receive an encrypted verification email, and the key is only published once you confirm it.</p>
+        <textarea class="form-control" id="keytext" name="keytext" rows="6" spellcheck="false" aria-describedby="keytext-desc" placeholder="-----BEGIN PGP PUBLIC KEY BLOCK-----" required></textarea>
+      </div>
       <input class="btn btn-primary btn-lg" type="submit" value="Upload">
-      <p class="field-hint">You will receive an encrypted verification email. The key is only published once you confirm it.</p>
     </form>
   </div>
 
@@ -24,12 +27,16 @@
     <h2>OpenPGP key lookup</h2>
     <form action="/pks/lookup" method="get">
       <input class="hidden" type="radio" name="op" value="get" checked="checked">
-      <div class="input-group input-group-lg">
-        <input class="form-control" name="search" type="text" spellcheck="false" placeholder="Email address or Key ID e.g. 0x11A1A9C84B18732F" required>
-        <span class="input-group-btn">
-          <input class="btn btn-default" type="submit" value="Search">
-        </span>
-      </div><!-- /input-group -->
+      <div class="field">
+        <label class="field-label" for="search">Email address or key ID</label>
+        <p class="field-description" id="search-desc">For example ola.nordmann@politiet.no or 0x11A1A9C84B18732F.</p>
+        <div class="input-group input-group-lg">
+          <input class="form-control" id="search" name="search" type="text" spellcheck="false" aria-describedby="search-desc" required>
+          <span class="input-group-btn">
+            <input class="btn btn-default" type="submit" value="Search">
+          </span>
+        </div><!-- /input-group -->
+      </div>
     </form>
   </div>
 
@@ -45,13 +52,16 @@
       <div class="progress-bar progress-bar-striped active" role="progressbar"></div>
     </div>
     <form>
-      <div class="input-group input-group-lg">
-        <input class="form-control" name="email" type="email" spellcheck="false" placeholder="Email address" required>
-        <span class="input-group-btn">
-          <input class="btn btn-default" type="submit" value="Delete">
-        </span>
-      </div><!-- /input-group -->
-      <p class="field-hint">A confirmation email is sent before the key is removed from the directory.</p>
+      <div class="field">
+        <label class="field-label" for="removeEmail">Email address</label>
+        <p class="field-description" id="removeEmail-desc">A confirmation email is sent before the key is removed from the directory.</p>
+        <div class="input-group input-group-lg">
+          <input class="form-control" id="removeEmail" name="email" type="email" spellcheck="false" aria-describedby="removeEmail-desc" required>
+          <span class="input-group-btn">
+            <input class="btn btn-default" type="submit" value="Delete">
+          </span>
+        </div><!-- /input-group -->
+      </div>
     </form>
   </div>
 

@@ -356,6 +356,16 @@ MONGO_INITDB_DATABASE=keyserver_db
 
 The sample docker-compose.yml uses [Caddy](https://caddyserver.com/) as a reverse proxy in front of the key server. The included `Caddyfile` terminates TLS with Caddy's internal certificate authority (self-signed, suitable for internal-only deployments such as this one) and adds security headers (HSTS, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`). If the key server needs to be reachable from the public internet instead, replace `tls internal` in the `Caddyfile` with your real hostname so Caddy obtains a certificate via ACME/Let's Encrypt automatically, and adjust `BASE_URL` accordingly.
 
+### Theming
+
+The web UI follows the conventions of [Designsystemet](https://designsystemet.no/), Digdir's design system for the Norwegian public sector: Inter as the typeface, a layered token model, a rem-based sizing scale, understated corner radii and a high-visibility focus ring.
+
+All design tokens live in `:root` in `src/static/css/politiet.css` and are named after their Designsystemet counterparts (`--ds-color-accent-base-default`, `--ds-color-neutral-text-subtle`, and so on). No component rule hardcodes a colour, so adjusting the palette — for example to the exact values from the Politiet design manual — only means editing that one block.
+
+Inter is self-hosted under `src/static/fonts/` (SIL Open Font License 1.1, see `inter-LICENSE.txt`) rather than loaded from a CDN, both so the server has no third-party runtime dependency and so the page stays within the `default-src 'self'` content security policy enabled by `CSP_HEADER`.
+
+The brand mark in the header is a generic shield, not the Politiet emblem. Use of the official emblem is restricted, so replacing it is a decision for whoever owns the visual identity.
+
 ## Run tests
 
 ```shell
