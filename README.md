@@ -375,6 +375,31 @@ Note that the verification links in outgoing emails point at `BASE_URL`. If reci
 
 Caddy writes a JSON access log to stdout covering both served and refused requests, so `docker compose logs caddy` carries the audit trail.
 
+#### Web application firewall
+
+Caddy runs [OWASP Coraza](https://coraza.io/) with the [OWASP Core Rule Set](https://coreruleset.org/). Coraza is a Caddy module and modules are compiled in, so the proxy is built from `caddy.Dockerfile` rather than pulled from the stock image. `docker compose up --build` handles this; the build needs network access to `proxy.golang.org`.
+
+The rule engine is set by `KEYSERVER_WAF_MODE`:
+
+| Value           | Behaviour                                        |
+| :-------------- | :----------------------------------------------- |
+| `DetectionOnly` | Logs what it would have refused, refuses nothing  |
+| `On`            | Refuses requests that exceed the anomaly score    |
+| `Off`           | Disables the WAF                                  |
+
+**Start on `DetectionOnly`.** An armored OpenPGP key is a high-entropy base64 block, and the Core Rule Set matches inside it: uploading a valid key from `test/fixtures` triggers rules 932230 and 932250 (`Remote Command Execution: Unix Command Injection`) for an inbound anomaly score of 10, against a default threshold of 5. Left alone, `On` would refuse every key upload.
+
+The `Caddyfile` therefore drops the `attack-rce` rule tag for `/api/v1/key` and `/pks/add`, the two endpoints that carry a key. The exclusion is scoped to those paths, so command injection rules still apply everywhere else. This was verified with `SecRuleEngine On`: key uploads reach the key server, while SQL injection, XSS, and command injection against other paths are all refused.
+
+Before switching to `On`, run `DetectionOnly` against real traffic and read the audit log. Other rule families may match on keys this project's fixtures don't cover, and each one needs the same treatment:
+
+```shell
+docker compose logs caddy | grep 949110   # requests that exceeded the anomaly score
+docker compose logs caddy | grep -o 'id "[0-9]\{6\}"' | sort | uniq -c | sort -rn
+```
+
+Add any further false positives to the exclusion rule in the `Caddyfile` rather than lowering the anomaly threshold globally.
+
 ### Theming
 
 The web UI follows the conventions of [Designsystemet](https://designsystemet.no/), Digdir's design system for the Norwegian public sector: Inter as the typeface, a layered token model, a rem-based sizing scale, understated corner radii and a high-visibility focus ring.

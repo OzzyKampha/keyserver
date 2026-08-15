@@ -1,3 +1,10 @@
+{
+	# coraza_waf is a plugin directive, so it has no place in Caddy's standard
+	# directive order and has to be positioned explicitly. It must run before
+	# the request is proxied.
+	order coraza_waf first
+}
+
 keyserver {
 	tls internal
 
@@ -24,6 +31,58 @@ keyserver {
 	@allowed remote_ip {$KEYSERVER_ALLOWED_IPS:10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.1/32 ::1}
 
 	handle @allowed {
+		# OWASP Coraza with the Core Rule Set.
+		#
+		# SecRuleEngine is DetectionOnly: attacks are logged, nothing is
+		# refused. Uploading an OpenPGP key means POSTing a large base64
+		# block, which CRS is prone to score as an anomaly, so run in this
+		# mode until the audit log shows what genuine traffic trips. Switch
+		# to `On` via KEYSERVER_WAF_MODE once the false positives are tuned
+		# out — see the README.
+		coraza_waf {
+			# Mounts the embedded Core Rule Set. Without this flag the
+			# @-prefixed includes below cannot be resolved.
+			load_owasp_crs
+
+			directives `
+			Include @coraza.conf-recommended
+			Include @crs-setup.conf.example
+			Include @owasp_crs/*.conf
+
+			SecRuleEngine {$KEYSERVER_WAF_MODE:DetectionOnly}
+
+			# An armored key runs to tens of kilobytes and arrives as a JSON
+			# body or a form field, neither of which counts as a file upload,
+			# so the no-files limit is the one that has to accommodate it.
+			SecRequestBodyLimit 1048576
+			SecRequestBodyNoFilesLimit 524288
+
+			# An armored key is a high-entropy base64 block, and the CRS
+			# Unix command injection rules match inside it: uploading a
+			# valid key scores 10 against an inbound threshold of 5, so
+			# with SecRuleEngine On every upload would be refused. Rules
+			# 932230 and 932250 were the ones observed, but any rule in
+			# that family can match a different key, so the whole tag is
+			# dropped for the two endpoints that carry a key — and only
+			# for those. Every other path keeps the full rule set.
+			SecRule REQUEST_URI "@rx ^/(api/v1/key|pks/add)" \
+				"id:900001,\
+				phase:1,\
+				pass,\
+				nolog,\
+				t:none,\
+				ctl:ruleRemoveByTag=attack-rce"
+
+			# Audit to stdout so refusals and near-misses land in
+			# docker compose logs alongside the access log.
+			SecAuditEngine RelevantOnly
+			SecAuditLogParts ABIJDEFHZ
+			SecAuditLog /dev/stdout
+			SecAuditLogFormat JSON
+			SecAuditLogType Serial
+			`
+		}
+
 		reverse_proxy keyserver:3000
 	}
 

@@ -25,7 +25,11 @@ services:
       - apparmor=unconfined
 
   caddy:
-    image: caddy:2-alpine
+    # Built from caddy.Dockerfile rather than the stock image, because the
+    # Coraza WAF module has to be compiled into the Caddy binary.
+    build:
+      context: .
+      dockerfile: caddy.Dockerfile
     restart: always
     depends_on:
       - keyserver
