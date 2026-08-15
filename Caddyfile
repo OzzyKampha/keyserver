@@ -1,10 +1,3 @@
-{
-	# coraza_waf is a plugin directive, so it has no place in Caddy's standard
-	# directive order and has to be positioned explicitly. It must run before
-	# the request is proxied.
-	order coraza_waf first
-}
-
 keyserver {
 	tls internal
 
@@ -23,6 +16,9 @@ keyserver {
 	# ranges and loopback, so the server is unreachable from the internet
 	# even if the port is exposed by accident.
 	#
+	# This runs ahead of the WAF: a client outside the allowlist is refused
+	# before any request body is read or inspected.
+	#
 	# remote_ip matches the address Caddy sees on the connection, which is
 	# correct while Caddy is the edge. If you later put a load balancer in
 	# front of it, switch to `client_ip` and declare the balancer under
@@ -31,59 +27,57 @@ keyserver {
 	@allowed remote_ip {$KEYSERVER_ALLOWED_IPS:10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.1/32 ::1}
 
 	handle @allowed {
-		# OWASP Coraza with the Core Rule Set.
+		# The two endpoints that receive an OpenPGP key. An armored key is a
+		# high-entropy base64 block, and the regex rules match inside it: a
+		# valid key from test/fixtures scores 14 against a threshold of 10,
+		# so the full rule set refuses every upload.
 		#
-		# SecRuleEngine is DetectionOnly: attacks are logged, nothing is
-		# refused. Uploading an OpenPGP key means POSTing a large base64
-		# block, which CRS is prone to score as an anomaly, so run in this
-		# mode until the audit log shows what genuine traffic trips. Switch
-		# to `On` via KEYSERVER_WAF_MODE once the false positives are tuned
-		# out — see the README.
-		coraza_waf {
-			# Mounts the embedded Core Rule Set. Without this flag the
-			# @-prefixed includes below cannot be resolved.
-			load_owasp_crs
+		# This module has no per-rule path scoping, so the exclusion is done
+		# here instead — these paths get a rule set with the BODY target
+		# stripped, leaving URI, query and header inspection intact. Every
+		# other path keeps the full rule set, body inspection included.
+		@keyendpoints path /api/v1/key /pks/add
 
-			directives `
-			Include @coraza.conf-recommended
-			Include @crs-setup.conf.example
-			Include @owasp_crs/*.conf
+		handle @keyendpoints {
+			route {
+				waf {
+					rule_file /etc/caddy/waf/rules-key-endpoints.json
+					anomaly_threshold {$KEYSERVER_WAF_THRESHOLD:10}
+					max_request_body_size 1048576
+					log_severity info
+					log_json
+				}
 
-			SecRuleEngine {$KEYSERVER_WAF_MODE:DetectionOnly}
-
-			# An armored key runs to tens of kilobytes and arrives as a JSON
-			# body or a form field, neither of which counts as a file upload,
-			# so the no-files limit is the one that has to accommodate it.
-			SecRequestBodyLimit 1048576
-			SecRequestBodyNoFilesLimit 524288
-
-			# An armored key is a high-entropy base64 block, and the CRS
-			# Unix command injection rules match inside it: uploading a
-			# valid key scores 10 against an inbound threshold of 5, so
-			# with SecRuleEngine On every upload would be refused. Rules
-			# 932230 and 932250 were the ones observed, but any rule in
-			# that family can match a different key, so the whole tag is
-			# dropped for the two endpoints that carry a key — and only
-			# for those. Every other path keeps the full rule set.
-			SecRule REQUEST_URI "@rx ^/(api/v1/key|pks/add)" \
-				"id:900001,\
-				phase:1,\
-				pass,\
-				nolog,\
-				t:none,\
-				ctl:ruleRemoveByTag=attack-rce"
-
-			# Audit to stdout so refusals and near-misses land in
-			# docker compose logs alongside the access log.
-			SecAuditEngine RelevantOnly
-			SecAuditLogParts ABIJDEFHZ
-			SecAuditLog /dev/stdout
-			SecAuditLogFormat JSON
-			SecAuditLogType Serial
-			`
+				reverse_proxy keyserver:3000
+			}
 		}
 
-		reverse_proxy keyserver:3000
+		# `waf` is a handler directive with no place in Caddy's standard
+		# directive order, so it is wrapped in a route block, which preserves
+		# the order written here and puts the WAF ahead of the proxy.
+		handle {
+			route {
+				waf {
+					rule_file /etc/caddy/waf/rules.json
+
+					# The only working posture control. Blocking is driven
+					# solely by this threshold: the per-rule "action" field in
+					# rules.json is inert, because the module reads that field
+					# from a JSON key named "mode" which the shipped rules do
+					# not use. Setting the threshold very high (see
+					# KEYSERVER_WAF_THRESHOLD in .env) therefore gives a
+					# detection-only posture — rules still evaluate and score,
+					# nothing is refused.
+					anomaly_threshold {$KEYSERVER_WAF_THRESHOLD:10}
+
+					max_request_body_size 1048576
+					log_severity info
+					log_json
+				}
+
+				reverse_proxy keyserver:3000
+			}
+		}
 	}
 
 	# Anything else never reaches the key server.

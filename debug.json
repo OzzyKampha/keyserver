@@ -1,0 +1,33 @@
+{"level":"INFO","ts":"2026/08/15 10:01:23.587","msg":"Provisioning WAF middleware","log_level":"info","log_path":"debug.json","log_json":true,"anomaly_threshold":10}
+{"level":"INFO","ts":"2026/08/15 10:01:23.587","msg":"Using configured anomaly threshold","anomaly_threshold":10}
+{"level":"INFO","ts":"2026/08/15 10:01:23.587","msg":"WAF middleware version","version":"v0.3.10"}
+{"level":"WARN","ts":"2026/08/15 10:01:23.587","msg":"Skipping file watch, file does not exist","file":""}
+{"level":"WARN","ts":"2026/08/15 10:01:23.587","msg":"Skipping file watch, file does not exist","file":""}
+{"level":"INFO","ts":"2026/08/15 10:01:23.587","msg":"Rate limiting is disabled"}
+{"level":"INFO","ts":"2026/08/15 10:01:23.588","msg":"WAF rules loaded successfully","total_rules":33,"rule_counts":"Phase 1: 17 rules, Phase 2: 16 rules, Phase 3: 0 rules, Phase 4: 0 rules, "}
+{"level":"INFO","ts":"2026/08/15 10:01:23.588","msg":"WAF middleware provisioned successfully"}
+{"level":"INFO","ts":"2026/08/15 10:05:28.988","msg":"Provisioning WAF middleware","log_level":"info","log_path":"debug.json","log_json":true,"anomaly_threshold":10}
+{"level":"INFO","ts":"2026/08/15 10:05:28.988","msg":"Using configured anomaly threshold","anomaly_threshold":10}
+{"level":"INFO","ts":"2026/08/15 10:05:28.988","msg":"WAF middleware version","version":"v0.3.10"}
+{"level":"WARN","ts":"2026/08/15 10:05:28.988","msg":"Skipping file watch, file does not exist","file":"/etc/caddy/waf/rules-key-endpoints.json"}
+{"level":"WARN","ts":"2026/08/15 10:05:28.988","msg":"Skipping file watch, file does not exist","file":""}
+{"level":"WARN","ts":"2026/08/15 10:05:28.988","msg":"Skipping file watch, file does not exist","file":""}
+{"level":"INFO","ts":"2026/08/15 10:05:28.988","msg":"Rate limiting is disabled"}
+{"level":"ERROR","ts":"2026/08/15 10:05:28.988","msg":"Failed to load rule file","file":"/etc/caddy/waf/rules-key-endpoints.json","error":"failed to read rule file: open /etc/caddy/waf/rules-key-endpoints.json: no such file or directory"}
+{"level":"ERROR","ts":"2026/08/15 10:05:28.988","msg":"Failed to load rule files","files":["/etc/caddy/waf/rules-key-endpoints.json"]}
+{"level":"INFO","ts":"2026/08/15 10:05:42.029","msg":"Provisioning WAF middleware","log_level":"info","log_path":"debug.json","log_json":true,"anomaly_threshold":10}
+{"level":"INFO","ts":"2026/08/15 10:05:42.029","msg":"Using configured anomaly threshold","anomaly_threshold":10}
+{"level":"INFO","ts":"2026/08/15 10:05:42.029","msg":"WAF middleware version","version":"v0.3.10"}
+{"level":"WARN","ts":"2026/08/15 10:05:42.029","msg":"Skipping file watch, file does not exist","file":""}
+{"level":"WARN","ts":"2026/08/15 10:05:42.029","msg":"Skipping file watch, file does not exist","file":""}
+{"level":"INFO","ts":"2026/08/15 10:05:42.029","msg":"Rate limiting is disabled"}
+{"level":"INFO","ts":"2026/08/15 10:05:42.032","msg":"WAF rules loaded successfully","total_rules":31,"rule_counts":"Phase 1: 17 rules, Phase 2: 14 rules, Phase 3: 0 rules, Phase 4: 0 rules, "}
+{"level":"INFO","ts":"2026/08/15 10:05:42.032","msg":"WAF middleware provisioned successfully"}
+{"level":"INFO","ts":"2026/08/15 10:05:42.032","msg":"Provisioning WAF middleware","log_level":"info","log_path":"debug.json","log_json":true,"anomaly_threshold":10}
+{"level":"INFO","ts":"2026/08/15 10:05:42.032","msg":"Using configured anomaly threshold","anomaly_threshold":10}
+{"level":"INFO","ts":"2026/08/15 10:05:42.032","msg":"WAF middleware version","version":"v0.3.10"}
+{"level":"WARN","ts":"2026/08/15 10:05:42.032","msg":"Skipping file watch, file does not exist","file":""}
+{"level":"WARN","ts":"2026/08/15 10:05:42.032","msg":"Skipping file watch, file does not exist","file":""}
+{"level":"INFO","ts":"2026/08/15 10:05:42.032","msg":"Rate limiting is disabled"}
+{"level":"INFO","ts":"2026/08/15 10:05:42.034","msg":"WAF rules loaded successfully","total_rules":33,"rule_counts":"Phase 1: 17 rules, Phase 2: 16 rules, Phase 3: 0 rules, Phase 4: 0 rules, "}
+{"level":"INFO","ts":"2026/08/15 10:05:42.034","msg":"WAF middleware provisioned successfully"}
