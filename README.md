@@ -411,7 +411,11 @@ The rule engine is set by `KEYSERVER_WAF_MODE`, defaulting to `On`:
 
 ##### The key upload exclusion
 
-An armored OpenPGP key is a high-entropy base64 block, and the Core Rule Set matches inside it. Uploading a valid key triggers the Unix command injection rules 932230 and 932250 for an anomaly score of 10 against a threshold of 5, so enforcing without tuning would refuse every upload.
+An armored OpenPGP key is a high-entropy base64 block, and the Core Rule Set matches inside it. The command injection rules 932230, 932250 and 932370 fire on the key material for an anomaly score of 10 against a threshold of 5, and the upload is refused.
+
+This does not affect every key, and which keys it affects cannot be predicted. Measured across 13 keys — the six fixtures plus seven generated across RSA 2048/3072/4096 and curve25519, P-256 and P-521 — two were refused with the exclusion removed: a 9.7 kB RSA 4096 key and a 714 byte NIST P-256 key. A 16 kB RSA 4096 key was not. It tracks neither algorithm nor size, only whether the base64 happens to contain a byte sequence matching one of the regexes, so roughly one key in seven in that sample. In practice that means some users' keys are refused and others are not, with no pattern an operator could reason about.
+
+That unpredictability is the reason the exclusion is scoped by rule tag rather than by rule ID: 932370 only appeared once a wider set of keys was tested, and pinning the two rules seen first would have left it to fail later on somebody's key.
 
 The `Caddyfile` takes the key itself out of the reach of those rules on `/api/v1/key` and `/pks/add`, rather than switching them off for those endpoints:
 
@@ -429,11 +433,11 @@ What this leaves in force on those two endpoints:
 * the command injection rules still run, and still inspect the URI, query string, headers and cookies
 * every other rule family, SQL injection and XSS included, still inspects the request body
 
-Verified with `SecRuleEngine On` against all six keys in `test/fixtures`: every upload is served, while command injection in the query string of the key endpoints, SQL injection in the key endpoint's JSON body, and attacks on other paths are all refused.
+Verified with `SecRuleEngine On` against 13 keys — the six in `test/fixtures` (RSA 1024/2048/4096 and ed25519) plus seven generated across RSA 2048/3072/4096, a multi-user-ID RSA 4096, curve25519, P-256 and P-521 — over both the JSON REST endpoint and the HKP form endpoint. All 13 are served, while command injection in the query string of the key endpoints, SQL injection in the key endpoint's JSON body, and attacks on other paths are all refused.
 
 ##### Tuning
 
-The fixtures are not every key. A key with a different byte sequence may match a rule family this exclusion does not cover, and the symptom is a refused upload. Drop to `DetectionOnly` and read the audit log:
+Thirteen keys are not every key. A key with a different byte sequence may match a rule family this exclusion does not cover, and the symptom is one user's upload being refused while everyone else's works. Drop to `DetectionOnly` and read the audit log:
 
 ```shell
 docker compose logs caddy | grep 949110   # requests that exceeded the anomaly score
