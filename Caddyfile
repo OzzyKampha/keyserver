@@ -30,6 +30,31 @@ keyserver {
 	# come from the balancer and the allowlist stops discriminating.
 	@allowed remote_ip {$KEYSERVER_ALLOWED_IPS:10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.1/32 ::1}
 
+	# Geographic filtering, applied only to clients that have a geographic
+	# location — which private addresses do not.
+	#
+	# The lookup returns "UNK" for any address the database has no record
+	# for, and "UNK" is not in an allow list, so a bare geo matcher refuses
+	# every RFC 1918 client. Internal traffic is therefore excluded from the
+	# check rather than relying on the database to place it.
+	#
+	# This uses client_ip, not remote_ip, because the geolocation module
+	# reads the client IP itself; the two matchers have to agree on which
+	# address they are talking about or the bypass will not line up with the
+	# lookup. With no trusted_proxies configured, client_ip is the connection
+	# address, same as remote_ip.
+	@geo_refused {
+		not client_ip private_ranges
+		not maxmind_geolocation {
+			db_path /etc/caddy/geoip/country.mmdb
+			allow_countries {$KEYSERVER_ALLOWED_COUNTRIES:NO}
+		}
+	}
+
+	handle @geo_refused {
+		respond "This key server is not available from your location." 403
+	}
+
 	handle @allowed {
 		# OWASP Coraza with the Core Rule Set.
 		#

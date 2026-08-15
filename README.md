@@ -375,6 +375,28 @@ Note that the verification links in outgoing emails point at `BASE_URL`. If reci
 
 Caddy writes a JSON access log to stdout covering both served and refused requests, so `docker compose logs caddy` carries the audit trail.
 
+#### Geographic filtering
+
+Requests from outside the countries listed in `KEYSERVER_ALLOWED_COUNTRIES` (space separated ISO 3166-1 alpha-2 codes, default `NO`) are refused with a 403.
+
+The check applies only to clients that have a geographic location. **Private addresses do not**, and this is the part that bites: the lookup returns `UNK` for any address the database has no record of, and `UNK` matches no allow list, so a bare geo matcher refuses every RFC 1918 client — that is, all your internal traffic. The `Caddyfile` therefore excludes private ranges from the check explicitly rather than trusting the database to place them.
+
+Note also that the geo matcher and its bypass both use `client_ip`, while the network allowlist uses `remote_ip`. The geolocation module reads the client IP itself, so the bypass has to use the same notion of the address or the two would disagree. With no `trusted_proxies` configured the two are identical; behind a load balancer they are not.
+
+Verified against a synthetic country database:
+
+| Client                        | Result |
+| :---------------------------- | :----- |
+| internal, no geo data         | served |
+| Norway                        | served |
+| Russia                        | 403    |
+| United States (not permitted) | 403    |
+| public address, unknown to the database | 403 |
+
+A country database is required at `geoip/country.mmdb` and **Caddy will not start without it** — see [geoip/README.md](geoip/README.md) for where to get one and how to keep it current. It is deliberately not in version control.
+
+One caveat worth being clear about: while `KEYSERVER_ALLOWED_IPS` permits only private ranges, the geo check never fires, because those clients are refused by the allowlist before it and internal clients bypass it. Geographic filtering only starts doing work once the allowlist is widened to admit public addresses. To remove it, delete the `@geo_refused` matcher and its `handle` block from the `Caddyfile`.
+
 #### Web application firewall
 
 Caddy runs [OWASP Coraza](https://coraza.io/) with the [OWASP Core Rule Set](https://coreruleset.org/). Coraza is a Caddy module and modules are compiled in, so the proxy is built from `caddy.Dockerfile` rather than pulled from the stock image. `docker compose up --build` handles this; the build needs network access to `proxy.golang.org`.

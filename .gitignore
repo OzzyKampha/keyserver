@@ -39,3 +39,6 @@ node_modules
 
 CLAUDE.md
 .claude/
+
+# GeoIP country database — licensed, downloaded at deploy time (see README)
+geoip/*.mmdb

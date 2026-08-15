@@ -38,6 +38,8 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Country database for the geo matcher. Caddy will not start without it.
+      - ./geoip:/etc/caddy/geoip:ro
       - caddy_data:/data
       - caddy_config:/config
     networks:
