@@ -11,5 +11,31 @@ keyserver {
 		-Server
 	}
 
-	reverse_proxy keyserver:3000
+	# Access is restricted to the networks listed in KEYSERVER_ALLOWED_IPS
+	# (space separated CIDRs, see .env). The default covers the RFC 1918
+	# ranges and loopback, so the server is unreachable from the internet
+	# even if the port is exposed by accident.
+	#
+	# remote_ip matches the address Caddy sees on the connection, which is
+	# correct while Caddy is the edge. If you later put a load balancer in
+	# front of it, switch to `client_ip` and declare the balancer under
+	# `servers { trusted_proxies }` — otherwise every request appears to
+	# come from the balancer and the allowlist stops discriminating.
+	@allowed remote_ip {$KEYSERVER_ALLOWED_IPS:10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.1/32 ::1}
+
+	handle @allowed {
+		reverse_proxy keyserver:3000
+	}
+
+	# Anything else never reaches the key server.
+	handle {
+		respond "This key server is restricted to the internal network." 403
+	}
+
+	# Access log to stdout, so `docker compose logs caddy` carries the audit
+	# trail, including the requests that were refused.
+	log {
+		output stdout
+		format json
+	}
 }

@@ -38,6 +38,8 @@ services:
       - caddy_config:/config
     networks:
       - proxy
+    # Supplies KEYSERVER_ALLOWED_IPS to the Caddyfile allowlist.
+    env_file: .env
     security_opt:
       - apparmor=unconfined
 

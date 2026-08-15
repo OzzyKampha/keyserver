@@ -356,6 +356,25 @@ MONGO_INITDB_DATABASE=keyserver_db
 
 The sample docker-compose.yml uses [Caddy](https://caddyserver.com/) as a reverse proxy in front of the key server. The included `Caddyfile` terminates TLS with Caddy's internal certificate authority (self-signed, suitable for internal-only deployments such as this one) and adds security headers (HSTS, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`). If the key server needs to be reachable from the public internet instead, replace `tls internal` in the `Caddyfile` with your real hostname so Caddy obtains a certificate via ACME/Let's Encrypt automatically, and adjust `BASE_URL` accordingly.
 
+#### Restricting access by network
+
+Caddy only proxies requests coming from the networks listed in `KEYSERVER_ALLOWED_IPS`, a space separated list of CIDRs set in `.env`. Everything else is answered with a 403 and never reaches the key server:
+
+```
+KEYSERVER_ALLOWED_IPS=10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.1/32 ::1
+```
+
+Narrow this to the ranges that should actually have access. Two behaviours are worth knowing, both verified against Caddy:
+
+* Removing the line falls back to the defaults shown above (the RFC 1918 ranges plus loopback).
+* Setting it to an empty value denies **every** client, including loopback. This fails closed rather than open, but it does mean a blank value locks everyone out.
+
+The matcher uses `remote_ip`, the address on the connection, which is correct while Caddy is the edge. If you put a load balancer in front of Caddy, switch to `client_ip` and declare the balancer under `servers { trusted_proxies }` — otherwise every request appears to originate from the balancer and the allowlist no longer discriminates.
+
+Note that the verification links in outgoing emails point at `BASE_URL`. If recipients open them from outside the allowed ranges the request is refused, so the allowlist needs to cover wherever users read their mail.
+
+Caddy writes a JSON access log to stdout covering both served and refused requests, so `docker compose logs caddy` carries the audit trail.
+
 ### Theming
 
 The web UI follows the conventions of [Designsystemet](https://designsystemet.no/), Digdir's design system for the Norwegian public sector: Inter as the typeface, a layered token model, a rem-based sizing scale, understated corner radii and a high-visibility focus ring.
