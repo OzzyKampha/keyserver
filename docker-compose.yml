@@ -26,7 +26,7 @@ services:
 
   caddy:
     # Built from caddy.Dockerfile rather than the stock image, because the
-    # caddy-waf module has to be compiled into the Caddy binary.
+    # Coraza WAF module has to be compiled into the Caddy binary.
     build:
       context: .
       dockerfile: caddy.Dockerfile
@@ -38,8 +38,6 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      # WAF rule sets, mounted so they can be tuned without rebuilding.
-      - ./waf:/etc/caddy/waf:ro
       - caddy_data:/data
       - caddy_config:/config
     networks:

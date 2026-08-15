@@ -377,47 +377,28 @@ Caddy writes a JSON access log to stdout covering both served and refused reques
 
 #### Web application firewall
 
-Caddy runs [caddy-waf](https://github.com/fabriziosalmi/caddy-waf). It is a Caddy module and modules are compiled in, so the proxy is built from `caddy.Dockerfile` rather than pulled from the stock image. `docker compose up --build` handles this; the build needs network access to `proxy.golang.org`. The module is AGPL-3.0, the same licence as this project, so its rule sets are vendored under `waf/` where they can be reviewed and tuned without rebuilding.
+Caddy runs [OWASP Coraza](https://coraza.io/) with the [OWASP Core Rule Set](https://coreruleset.org/). Coraza is a Caddy module and modules are compiled in, so the proxy is built from `caddy.Dockerfile` rather than pulled from the stock image. `docker compose up --build` handles this; the build needs network access to `proxy.golang.org`.
 
-##### Posture
+The rule engine is set by `KEYSERVER_WAF_MODE`:
 
-Blocking is controlled solely by `KEYSERVER_WAF_THRESHOLD`, the anomaly score at which a request is refused. Set it very high for a detection-only posture:
+| Value           | Behaviour                                        |
+| :-------------- | :----------------------------------------------- |
+| `DetectionOnly` | Logs what it would have refused, refuses nothing  |
+| `On`            | Refuses requests that exceed the anomaly score    |
+| `Off`           | Disables the WAF                                  |
 
-```
-KEYSERVER_WAF_THRESHOLD=1000000   # detection only: scored and logged, never refused
-KEYSERVER_WAF_THRESHOLD=10        # enforcing
-```
+**Start on `DetectionOnly`.** An armored OpenPGP key is a high-entropy base64 block, and the Core Rule Set matches inside it: uploading a valid key from `test/fixtures` triggers rules 932230 and 932250 (`Remote Command Execution: Unix Command Injection`) for an inbound anomaly score of 10, against a default threshold of 5. Left alone, `On` would refuse every key upload.
 
-**The per-rule `action` field in the rule sets does nothing.** The module reads that field from a JSON key named `mode`, while every shipped rule uses `action`, so the value never loads and both the `block` and `log` branches are unreachable. Editing `action` to build a detection-only rule set produces a control that silently has no effect. The threshold is the only lever that works. This was read from the module source and confirmed at runtime: with the threshold raised, an SQL injection probe scored 34 and an XSS probe 22, both logged with `"blocked": false`.
+The `Caddyfile` therefore drops the `attack-rce` rule tag for `/api/v1/key` and `/pks/add`, the two endpoints that carry a key. The exclusion is scoped to those paths, so command injection rules still apply everywhere else. This was verified with `SecRuleEngine On`: key uploads reach the key server, while SQL injection, XSS, and command injection against other paths are all refused.
 
-##### Rule sets
-
-Two files are mounted at `/etc/caddy/waf`:
-
-| File                       | Applied to                | Contents                                |
-| :------------------------- | :------------------------ | :-------------------------------------- |
-| `rules.json`               | every other path          | the full 33-rule set, body inspection on |
-| `rules-key-endpoints.json` | `/api/v1/key`, `/pks/add` | the same rules with the `BODY` target removed (31 rules) |
-
-An armored OpenPGP key is a high-entropy base64 block and the regex rules match inside it: a valid key from `test/fixtures` scores 14 against a threshold of 10, so the full rule set refuses every upload. The module has no per-rule path scoping, so the two key-carrying endpoints are routed to a rule set that does not regex-scan the request body. On those paths the body is by definition an opaque base64 blob; URI, query string and header inspection still apply.
-
-Verified end to end with the threshold at 10:
-
-* legitimate key uploads reach the key server
-* SQL injection, XSS and command injection on other paths are refused with 403
-* SQL injection and XSS in the **query string of the key endpoints** are still refused, so the exclusion is narrow
-* ordinary requests are served
-
-##### Tuning
-
-Run with a high threshold against real traffic first, then read the scores:
+Before switching to `On`, run `DetectionOnly` against real traffic and read the audit log. Other rule families may match on keys this project's fixtures don't cover, and each one needs the same treatment:
 
 ```shell
-docker compose logs caddy | grep "evaluation completed"   # per-request anomaly scores
-docker compose logs caddy | grep "REQUEST BLOCKED BY WAF" # what would be, or was, refused
+docker compose logs caddy | grep 949110   # requests that exceeded the anomaly score
+docker compose logs caddy | grep -o 'id "[0-9]\{6\}"' | sort | uniq -c | sort -rn
 ```
 
-Keys this project's fixtures do not cover may match other rules. Adjust the rule sets under `waf/` rather than raising the threshold globally, and re-check that the scores for genuine traffic sit below it.
+Add any further false positives to the exclusion rule in the `Caddyfile` rather than lowering the anomaly threshold globally.
 
 ### Theming
 
