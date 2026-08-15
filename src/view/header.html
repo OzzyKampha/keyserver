@@ -1,0 +1,25 @@
+<%
+  // `page` is passed by the including view and marks the active nav item.
+  const current = typeof page === 'undefined' ? '' : page;
+%>
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="site-brand" href="/">
+      <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <path d="M32 6l22 8v18c0 14.4-8.9 23.2-22 27C18.9 55.2 10 46.4 10 32V14l22-8z" fill="none" stroke="#c9a227" stroke-width="4"/>
+        <circle cx="32" cy="28" r="7" fill="none" stroke="#ffffff" stroke-width="4"/>
+        <path d="M32 35v13M32 43h6" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+      </svg>
+      <span class="brand-name">
+        Key Server
+        <span class="brand-sub">Politiets IT-enhet</span>
+      </span>
+    </a>
+    <nav aria-label="Main">
+      <ul class="site-nav">
+        <li<%- current === 'home' ? ' class="active"' : '' %>><a href="/"<%- current === 'home' ? ' aria-current="page"' : '' %>>Home</a></li>
+        <li<%- current === 'manage' ? ' class="active"' : '' %>><a href="/manage.html"<%- current === 'manage' ? ' aria-current="page"' : '' %>>Manage keys</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>

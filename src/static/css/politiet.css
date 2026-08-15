@@ -1,0 +1,486 @@
+/*
+ * Politiets IT-enhet theme for the OpenPGP key server.
+ *
+ * Loaded after bootstrap.min.css and overrides it. All assets are served from
+ * this origin so the theme stays within the `default-src 'self'` CSP.
+ *
+ * The palette below approximates the Politiet visual identity. Replace the
+ * values in :root with the official hex codes from the design manual to make
+ * the whole site follow suit — nothing else hardcodes a colour.
+ */
+
+:root {
+  --pit-navy: #002b49;
+  --pit-navy-light: #013a5e;
+  --pit-navy-dark: #001c31;
+  --pit-gold: #c9a227;
+
+  --pit-bg: #f4f6f8;
+  --pit-surface: #ffffff;
+  --pit-border: #dde3e9;
+
+  --pit-text: #1b2733;
+  --pit-muted: #5a6b7b;
+  --pit-link: #0b5fa5;
+
+  --pit-success: #1e7a45;
+  --pit-danger: #b3261e;
+
+  --pit-radius: 6px;
+  --pit-shadow: 0 1px 2px rgba(0, 43, 73, 0.06), 0 2px 8px rgba(0, 43, 73, 0.05);
+}
+
+/* ---------------------------------------------------------------- base --- */
+
+/* Flex column so the footer stays at the bottom on short pages. */
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 0;
+  background-color: var(--pit-bg);
+  color: var(--pit-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5 {
+  color: var(--pit-navy);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+a {
+  color: var(--pit-link);
+}
+
+a:hover,
+a:focus {
+  color: var(--pit-navy);
+}
+
+hr {
+  border-top-color: var(--pit-border);
+}
+
+/* Visible focus ring everywhere — required for WCAG 2.1 AA. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--pit-gold);
+  outline-offset: 2px;
+}
+
+/* Let keyboard users jump straight to the content. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 12px 20px;
+  background: var(--pit-surface);
+  color: var(--pit-navy);
+  font-weight: 600;
+}
+
+.skip-link:focus {
+  left: 0;
+}
+
+/* -------------------------------------------------------------- header --- */
+
+.site-header {
+  background-color: var(--pit-navy);
+  border-bottom: 3px solid var(--pit-gold);
+}
+
+.site-header .header-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.site-brand,
+.site-brand:hover,
+.site-brand:focus {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.site-brand .brand-mark {
+  flex: none;
+  width: 34px;
+  height: 34px;
+}
+
+.site-brand .brand-name {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.site-brand .brand-sub {
+  display: block;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Bootstrap's nav-pills, restyled for the navy bar. */
+.site-nav {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-nav li {
+  display: inline-block;
+}
+
+.site-nav a {
+  display: block;
+  padding: 8px 14px;
+  border-radius: var(--pit-radius);
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.site-nav a:hover,
+.site-nav a:focus {
+  background-color: var(--pit-navy-light);
+  color: #ffffff;
+}
+
+.site-nav .active a {
+  background-color: var(--pit-navy-dark);
+  color: #ffffff;
+}
+
+/* ---------------------------------------------------------------- main --- */
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 960px;
+  }
+}
+
+.page {
+  flex: 1 0 auto;
+  padding-top: 32px;
+  padding-bottom: 48px;
+}
+
+/* Inline code — Bootstrap's default is pink, which clashes with the palette. */
+code {
+  padding: 2px 6px;
+  border: 1px solid var(--pit-border);
+  border-radius: 4px;
+  background-color: #eef2f6;
+  color: var(--pit-navy);
+  font-size: 90%;
+}
+
+/* Hero on the front page. */
+.hero {
+  margin-bottom: 32px;
+  padding: 40px 32px;
+  border: 1px solid var(--pit-border);
+  border-radius: var(--pit-radius);
+  background-color: var(--pit-surface);
+  box-shadow: var(--pit-shadow);
+  text-align: center;
+}
+
+.hero h1 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 38px;
+}
+
+.hero .lead {
+  max-width: 640px;
+  margin: 0 auto 24px;
+  color: var(--pit-muted);
+  font-size: 18px;
+}
+
+/* Content cards. */
+.card {
+  margin-bottom: 24px;
+  padding: 24px;
+  border: 1px solid var(--pit-border);
+  border-radius: var(--pit-radius);
+  background-color: var(--pit-surface);
+  box-shadow: var(--pit-shadow);
+}
+
+.card > h2,
+.card > h3,
+.card > h4 {
+  margin-top: 0;
+}
+
+.card h2 {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--pit-border);
+  font-size: 22px;
+}
+
+.card p:last-child {
+  margin-bottom: 0;
+}
+
+.card-muted {
+  color: var(--pit-muted);
+}
+
+/* Equal-height cards when the feature grid goes two-up. */
+@media (min-width: 992px) {
+  .card-grid {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .card-grid > [class*="col-"] {
+    display: flex;
+  }
+
+  .card-grid .card {
+    width: 100%;
+  }
+}
+
+/* --------------------------------------------------------------- forms --- */
+
+.form-control {
+  height: auto;
+  padding: 10px 12px;
+  border-color: #c4ced8;
+  border-radius: var(--pit-radius);
+  box-shadow: none;
+  color: var(--pit-text);
+  font-size: 16px;
+}
+
+.form-control:focus {
+  border-color: var(--pit-navy-light);
+  box-shadow: 0 0 0 3px rgba(1, 58, 94, 0.15);
+}
+
+textarea.form-control {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px;
+}
+
+.field-hint {
+  margin-top: 8px;
+  margin-bottom: 0;
+  color: var(--pit-muted);
+  font-size: 14px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: 1px solid transparent;
+  border-radius: var(--pit-radius);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.btn-primary,
+.btn-primary:focus {
+  background-color: var(--pit-navy);
+  border-color: var(--pit-navy);
+  color: #ffffff;
+}
+
+.btn-primary:hover,
+.btn-primary:active {
+  background-color: var(--pit-navy-light);
+  border-color: var(--pit-navy-light);
+}
+
+.btn-default,
+.btn-default:focus {
+  background-color: var(--pit-surface);
+  border-color: var(--pit-navy);
+  color: var(--pit-navy);
+}
+
+.btn-default:hover,
+.btn-default:active {
+  background-color: var(--pit-navy);
+  color: #ffffff;
+}
+
+.btn-lg {
+  padding: 13px 28px;
+  font-size: 17px;
+}
+
+.input-group-lg .form-control,
+.input-group-lg .btn {
+  height: auto;
+  font-size: 16px;
+}
+
+/* Bootstrap joins the input and button — round the outer corners only. */
+.input-group .form-control:first-child {
+  border-top-left-radius: var(--pit-radius);
+  border-bottom-left-radius: var(--pit-radius);
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.input-group-btn:last-child > .btn {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-top-right-radius: var(--pit-radius);
+  border-bottom-right-radius: var(--pit-radius);
+}
+
+/* ------------------------------------------------------ status feedback --- */
+
+.alert {
+  border-radius: var(--pit-radius);
+  border-width: 1px;
+  border-left-width: 4px;
+}
+
+.alert-success {
+  background-color: #eaf5ee;
+  border-color: var(--pit-success);
+  color: #12532e;
+}
+
+.alert-danger {
+  background-color: #fdeceb;
+  border-color: var(--pit-danger);
+  color: #7f1a15;
+}
+
+.progress {
+  height: 6px;
+  margin-bottom: 16px;
+  border-radius: 999px;
+  background-color: #e3e8ee;
+  box-shadow: none;
+}
+
+.progress-bar {
+  background-color: var(--pit-navy);
+}
+
+/* Armored key output. */
+pre {
+  padding: 16px;
+  border: 1px solid var(--pit-border);
+  border-radius: var(--pit-radius);
+  background-color: #f8fafb;
+  color: var(--pit-text);
+  font-size: 13px;
+  overflow-x: auto;
+}
+
+.key-meta {
+  margin-top: 0;
+  color: var(--pit-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+/* Confirmation pages. */
+.status-card {
+  border-top: 4px solid var(--pit-success);
+  text-align: center;
+}
+
+.status-card h1 {
+  margin-top: 0;
+  font-size: 26px;
+}
+
+.status-card .link-out {
+  word-break: break-all;
+}
+
+/* -------------------------------------------------------------- footer --- */
+
+.site-footer {
+  padding: 24px 0;
+  border-top: 1px solid var(--pit-border);
+  background-color: var(--pit-surface);
+  color: var(--pit-muted);
+  font-size: 14px;
+}
+
+.site-footer .footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+/* ---------------------------------------------------------- responsive --- */
+
+@media (max-width: 767px) {
+  .site-header .header-inner {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .site-footer .footer-inner {
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .hero {
+    padding: 28px 20px;
+  }
+
+  .hero h1 {
+    font-size: 30px;
+  }
+
+  /* Stacked input + button read better full width on phones. All four
+     corners are restored, so these selectors must outrank the joined-corner
+     rules above (a media query adds no specificity of its own). */
+  .input-group,
+  .input-group .form-control:first-child,
+  .input-group .input-group-btn,
+  .input-group .input-group-btn:last-child > .btn {
+    display: block;
+    width: 100%;
+    border-radius: var(--pit-radius);
+  }
+
+  .input-group .input-group-btn:last-child > .btn {
+    margin-top: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-bar-striped {
+    animation: none;
+  }
+}
