@@ -39,3 +39,7 @@ node_modules
 
 CLAUDE.md
 .claude/
+
+# WAF module log sink (see Caddyfile log_path)
+debug.json
+log.json

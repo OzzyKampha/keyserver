@@ -46,6 +46,13 @@ keyserver {
 					max_request_body_size 1048576
 					log_severity info
 					log_json
+
+					# The module tees its log to the console and to a file,
+					# defaulting the file to log.json in the working
+					# directory, where it would grow without bound inside
+					# the container. The console side is what reaches
+					# docker compose logs, so the file sink is discarded.
+					log_path /dev/null
 				}
 
 				reverse_proxy keyserver:3000
@@ -73,6 +80,13 @@ keyserver {
 					max_request_body_size 1048576
 					log_severity info
 					log_json
+
+					# The module tees its log to the console and to a file,
+					# defaulting the file to log.json in the working
+					# directory, where it would grow without bound inside
+					# the container. The console side is what reaches
+					# docker compose logs, so the file sink is discarded.
+					log_path /dev/null
 				}
 
 				reverse_proxy keyserver:3000
