@@ -347,14 +347,14 @@ For production you should use a service like [Amazon SES](https://aws.amazon.com
 Docker images are built from this repository and available at ghcr. You can use the sample docker-compose.yml - review it and populate an .env file with the required [settings](#Settings) before running the server. `BASE_URL` must be set to the public-facing URL of your key server. To create the database automatically, the following parameters are needed in .env file:
 
 ```
-BASE_URL=https://keyserver.example.com
+BASE_URL=https://keyserver
 MONGO_URI=mongodb:27017/keyserver_db
 MONGO_USER=keyserver
 MONGO_PASS=somepassword
 MONGO_INITDB_DATABASE=keyserver_db
 ```
 
-The sample docker-compose.yml also contains common traefik settings, but you may need to adjust them for your own reverse proxy.
+The sample docker-compose.yml uses [Caddy](https://caddyserver.com/) as a reverse proxy in front of the key server. The included `Caddyfile` terminates TLS with Caddy's internal certificate authority (self-signed, suitable for internal-only deployments such as this one) and adds security headers (HSTS, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`). If the key server needs to be reachable from the public internet instead, replace `tls internal` in the `Caddyfile` with your real hostname so Caddy obtains a certificate via ACME/Let's Encrypt automatically, and adjust `BASE_URL` accordingly.
 
 ## Run tests
 

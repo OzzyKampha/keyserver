@@ -18,18 +18,33 @@ services:
     depends_on:
       - mongodb
     networks:
-      - traefik-proxy
+      - proxy
       - backend
     env_file: .env
     security_opt:
       - apparmor=unconfined
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.keyserver.rule=Host(`keyserver.example.com`)"
-      - "traefik.http.routers.keyserver.entrypoints=websecure"
-      - "traefik.http.routers.keyserver.tls.certresolver=acme-le"
-      - "traefik.http.services.keyserver.loadbalancer.server.port=3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    depends_on:
+      - keyserver
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - proxy
+    security_opt:
+      - apparmor=unconfined
 
 networks:
   backend:
-  traefik-proxy:
+  proxy:
+
+volumes:
+  caddy_data:
+  caddy_config:
