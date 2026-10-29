@@ -1,0 +1,591 @@
+/*
+ * Politiets IT-enhet theme for the OpenPGP key server.
+ *
+ * Follows the conventions of Designsystemet (Digdir's design system for the
+ * Norwegian public sector): Inter as the typeface, a layered token model
+ * (primitive scale -> semantic role tokens), a rem-based sizing scale,
+ * modest corner radii and a high-visibility two-tone focus ring.
+ *
+ * Tokens are named after their Designsystemet counterparts, so adopting the
+ * real @digdir/designsystemet-theme package later is a matter of mapping
+ * --ds-color-accent-base-default and friends onto these names — no component
+ * rule below hardcodes a colour.
+ *
+ * Loaded after bootstrap.min.css. Everything is served from this origin so
+ * the page stays within the `default-src 'self'` CSP.
+ */
+
+/* Inter, self-hosted. Variable weight axis 100-900, SIL OFL 1.1 — see
+   /fonts/inter-LICENSE.txt. Latin-ext is split out so it is only fetched
+   when a page actually needs those glyphs. */
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(/fonts/inter-latin-wght-normal.woff2) format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(/fonts/inter-latin-ext-wght-normal.woff2) format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+  /* --- Accent scale. Deep navy for Politiet; replace with the design
+         manual values and every component follows. --------------------- */
+  --ds-color-accent-background-default: #f3f6fa;
+  --ds-color-accent-background-tinted: #e6edf5;
+  --ds-color-accent-surface-default: #d3e0ee;
+  --ds-color-accent-surface-hover: #c2d4e7;
+  --ds-color-accent-border-subtle: #a8c1dc;
+  --ds-color-accent-border-default: #3b6d9e;
+  --ds-color-accent-base-default: #00335a;
+  --ds-color-accent-base-hover: #014675;
+  --ds-color-accent-base-active: #001f38;
+  --ds-color-accent-text-default: #00457a;
+  --ds-color-accent-text-subtle: #00365f;
+  --ds-color-accent-contrast-default: #ffffff;
+
+  /* --- Neutral scale ---------------------------------------------------- */
+  --ds-color-neutral-background-default: #ffffff;
+  --ds-color-neutral-background-tinted: #f2f4f6;
+  --ds-color-neutral-surface-default: #e6e9ec;
+  --ds-color-neutral-border-subtle: #d6dbe0;
+  --ds-color-neutral-border-default: #949fa9;
+  --ds-color-neutral-border-strong: #5f6b76;
+  --ds-color-neutral-base-default: #1e2b36;
+  --ds-color-neutral-text-subtle: #55616c;
+  --ds-color-neutral-text-default: #1e2b36;
+
+  /* --- Status scales ---------------------------------------------------- */
+  --ds-color-success-background-default: #eef7f1;
+  --ds-color-success-border-default: #1c7a45;
+  --ds-color-success-text-default: #0f5330;
+
+  --ds-color-danger-background-default: #fdefee;
+  --ds-color-danger-border-default: #b52d20;
+  --ds-color-danger-text-default: #7c1d14;
+
+  /* --- Focus. Designsystemet's signature two-tone ring: a light inner
+         edge so the dark outer ring stays visible on dark surfaces. ----- */
+  --ds-color-focus-inner: #ffffff;
+  --ds-color-focus-outer: #00335a;
+
+  /* --- Sizing scale (0.25rem steps) ------------------------------------- */
+  --ds-size-1: 0.25rem;
+  --ds-size-2: 0.5rem;
+  --ds-size-3: 0.75rem;
+  --ds-size-4: 1rem;
+  --ds-size-5: 1.25rem;
+  --ds-size-6: 1.5rem;
+  --ds-size-8: 2rem;
+  --ds-size-10: 2.5rem;
+  --ds-size-14: 3.5rem;
+
+  /* --- Border radius. Designsystemet stays deliberately understated. ---- */
+  --ds-border-radius-sm: 2px;
+  --ds-border-radius-md: 4px;
+  --ds-border-radius-lg: 8px;
+  --ds-border-radius-full: 9999px;
+
+  /* --- Typography ------------------------------------------------------- */
+  --ds-font-family: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  --ds-font-family-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* ---------------------------------------------------------------- base --- */
+
+/* Bootstrap 3 sets `html { font-size: 10px }`, which would silently rebase
+   every rem in the sizing scale above. Restore the user's default. */
+html {
+  font-size: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 0;
+  background-color: var(--ds-color-neutral-background-tinted);
+  color: var(--ds-color-neutral-text-default);
+  font-family: var(--ds-font-family);
+  font-size: 1.125rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Designsystemet pairs large, tightly-tracked headings with generous body
+   text — the hierarchy comes from size and spacing, not from colour. */
+h1, h2, h3, h4, h5 {
+  margin-top: 0;
+  color: var(--ds-color-neutral-text-default);
+  font-family: var(--ds-font-family);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 1.875rem; }
+h3 { font-size: 1.5rem; }
+h4 { font-size: 1.25rem; }
+
+p {
+  margin-bottom: var(--ds-size-4);
+}
+
+a {
+  color: var(--ds-color-accent-text-default);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+a:hover {
+  color: var(--ds-color-accent-base-hover);
+  text-decoration-thickness: 2px;
+}
+
+hr {
+  border-top-color: var(--ds-color-neutral-border-subtle);
+}
+
+/* Two-tone focus ring on every interactive element. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--ds-color-focus-outer);
+  outline-offset: 0;
+  box-shadow: 0 0 0 3px var(--ds-color-focus-inner);
+  border-radius: var(--ds-border-radius-sm);
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: var(--ds-size-3) var(--ds-size-5);
+  background: var(--ds-color-neutral-background-default);
+  color: var(--ds-color-accent-text-default);
+  font-weight: 500;
+}
+
+.skip-link:focus {
+  left: 0;
+}
+
+/* -------------------------------------------------------------- header --- */
+
+.site-header {
+  background-color: var(--ds-color-accent-base-default);
+  color: var(--ds-color-accent-contrast-default);
+}
+
+.site-header .header-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-size-4);
+  padding-top: var(--ds-size-4);
+  padding-bottom: var(--ds-size-4);
+}
+
+.site-brand,
+.site-brand:hover,
+.site-brand:focus {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-size-3);
+  color: var(--ds-color-accent-contrast-default);
+  text-decoration: none;
+}
+
+.site-brand .brand-mark {
+  flex: none;
+  width: 36px;
+  height: 36px;
+}
+
+.site-brand .brand-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.site-brand .brand-sub {
+  display: block;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.875rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+.site-nav {
+  display: flex;
+  gap: var(--ds-size-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-nav a {
+  display: block;
+  padding: var(--ds-size-2) var(--ds-size-3);
+  border-radius: var(--ds-border-radius-md);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 1rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.site-nav a:hover {
+  background-color: var(--ds-color-accent-base-hover);
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+/* Designsystemet marks the current page with a weight/underline change
+   rather than a filled pill. */
+.site-nav .active a {
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: inset 0 -3px 0 0 currentColor;
+}
+
+/* ---------------------------------------------------------------- main --- */
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 1000px;
+  }
+}
+
+.page {
+  flex: 1 0 auto;
+  padding-top: var(--ds-size-10);
+  padding-bottom: var(--ds-size-14);
+}
+
+code {
+  padding: 0.1em 0.4em;
+  border-radius: var(--ds-border-radius-sm);
+  background-color: var(--ds-color-accent-background-tinted);
+  color: var(--ds-color-accent-text-subtle);
+  font-family: var(--ds-font-family-mono);
+  font-size: 0.9em;
+}
+
+/* Lead section. Flat and typographic — no drop shadow, no centred slab. */
+.hero {
+  max-width: 46rem;
+  margin-bottom: var(--ds-size-10);
+}
+
+.hero h1 {
+  margin-bottom: var(--ds-size-4);
+}
+
+.hero .lead {
+  margin-bottom: var(--ds-size-6);
+  color: var(--ds-color-neutral-text-subtle);
+  font-size: 1.375rem;
+  line-height: 1.5;
+}
+
+/* Cards: flat surfaces with a hairline border. Designsystemet leans on
+   borders and spacing rather than elevation. */
+.card {
+  height: 100%;
+  margin-bottom: var(--ds-size-6);
+  padding: var(--ds-size-6);
+  border: 1px solid var(--ds-color-neutral-border-subtle);
+  border-radius: var(--ds-border-radius-lg);
+  background-color: var(--ds-color-neutral-background-default);
+}
+
+.card > h2,
+.card > h3,
+.card > h4 {
+  margin-bottom: var(--ds-size-3);
+}
+
+.card h2 {
+  padding-bottom: var(--ds-size-3);
+  border-bottom: 1px solid var(--ds-color-neutral-border-subtle);
+  margin-bottom: var(--ds-size-5);
+}
+
+.card p:last-child {
+  margin-bottom: 0;
+}
+
+.card-muted {
+  color: var(--ds-color-neutral-text-subtle);
+}
+
+@media (min-width: 992px) {
+  .card-grid {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .card-grid > [class*="col-"] {
+    display: flex;
+  }
+
+  .card-grid .card {
+    width: 100%;
+  }
+}
+
+/* --------------------------------------------------------------- forms --- */
+
+/* Designsystemet always pairs a field with a visible label, and puts help
+   text between the label and the control. */
+.field {
+  margin-bottom: var(--ds-size-5);
+}
+
+.field-label {
+  display: block;
+  margin-bottom: var(--ds-size-1);
+  color: var(--ds-color-neutral-text-default);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.field-description {
+  margin-bottom: var(--ds-size-2);
+  color: var(--ds-color-neutral-text-subtle);
+  font-size: 0.9375rem;
+}
+
+.form-control {
+  height: auto;
+  padding: var(--ds-size-2) var(--ds-size-3);
+  border: 1px solid var(--ds-color-neutral-border-strong);
+  border-radius: var(--ds-border-radius-md);
+  box-shadow: none;
+  color: var(--ds-color-neutral-text-default);
+  font-family: inherit;
+  font-size: 1.125rem;
+}
+
+.form-control:focus {
+  border-color: var(--ds-color-neutral-border-strong);
+  box-shadow: none;
+}
+
+textarea.form-control {
+  font-family: var(--ds-font-family-mono);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.btn,
+.btn:hover,
+.btn:focus {
+  padding: var(--ds-size-2) var(--ds-size-5);
+  border: 2px solid transparent;
+  border-radius: var(--ds-border-radius-md);
+  font-family: inherit;
+  font-size: 1.125rem;
+  font-weight: 500;
+  line-height: 1.5;
+  text-decoration: none;
+}
+
+.btn-primary,
+.btn-primary:focus {
+  background-color: var(--ds-color-accent-base-default);
+  border-color: var(--ds-color-accent-base-default);
+  color: var(--ds-color-accent-contrast-default);
+}
+
+.btn-primary:hover {
+  background-color: var(--ds-color-accent-base-hover);
+  border-color: var(--ds-color-accent-base-hover);
+}
+
+.btn-primary:active {
+  background-color: var(--ds-color-accent-base-active);
+  border-color: var(--ds-color-accent-base-active);
+}
+
+/* Secondary: outlined, tinting on hover rather than inverting. */
+.btn-default,
+.btn-default:focus {
+  background-color: transparent;
+  border-color: var(--ds-color-accent-base-default);
+  color: var(--ds-color-accent-text-default);
+}
+
+.btn-default:hover {
+  background-color: var(--ds-color-accent-background-tinted);
+  border-color: var(--ds-color-accent-base-default);
+  color: var(--ds-color-accent-text-default);
+}
+
+.btn-lg {
+  padding: var(--ds-size-3) var(--ds-size-6);
+  font-size: 1.125rem;
+}
+
+.input-group-lg .form-control,
+.input-group-lg .btn {
+  height: auto;
+  font-size: 1.125rem;
+}
+
+/* A search field and its button read as one control. */
+.input-group .form-control:first-child {
+  border-top-left-radius: var(--ds-border-radius-md);
+  border-bottom-left-radius: var(--ds-border-radius-md);
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.input-group-btn:last-child > .btn {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-top-right-radius: var(--ds-border-radius-md);
+  border-bottom-right-radius: var(--ds-border-radius-md);
+}
+
+/* ------------------------------------------------------ status feedback --- */
+
+.alert {
+  padding: var(--ds-size-4);
+  border-width: 1px;
+  border-left-width: 4px;
+  border-radius: var(--ds-border-radius-md);
+}
+
+.alert-success {
+  background-color: var(--ds-color-success-background-default);
+  border-color: var(--ds-color-success-border-default);
+  color: var(--ds-color-success-text-default);
+}
+
+.alert-danger {
+  background-color: var(--ds-color-danger-background-default);
+  border-color: var(--ds-color-danger-border-default);
+  color: var(--ds-color-danger-text-default);
+}
+
+.progress {
+  height: var(--ds-size-1);
+  margin-bottom: var(--ds-size-4);
+  border-radius: var(--ds-border-radius-full);
+  background-color: var(--ds-color-neutral-surface-default);
+  box-shadow: none;
+}
+
+.progress-bar {
+  background-color: var(--ds-color-accent-base-default);
+}
+
+pre {
+  padding: var(--ds-size-4);
+  border: 1px solid var(--ds-color-neutral-border-subtle);
+  border-radius: var(--ds-border-radius-md);
+  background-color: var(--ds-color-neutral-background-tinted);
+  color: var(--ds-color-neutral-text-default);
+  font-family: var(--ds-font-family-mono);
+  font-size: 0.875rem;
+  overflow-x: auto;
+}
+
+.key-meta {
+  color: var(--ds-color-neutral-text-subtle);
+  font-family: var(--ds-font-family-mono);
+  font-size: 0.9375rem;
+  word-break: break-all;
+}
+
+.status-card {
+  border-left: 4px solid var(--ds-color-success-border-default);
+}
+
+.status-card h1 {
+  font-size: 1.875rem;
+}
+
+.status-card .link-out {
+  word-break: break-all;
+}
+
+/* -------------------------------------------------------------- footer --- */
+
+.site-footer {
+  padding: var(--ds-size-6) 0;
+  border-top: 1px solid var(--ds-color-neutral-border-subtle);
+  background-color: var(--ds-color-neutral-background-default);
+  color: var(--ds-color-neutral-text-subtle);
+  font-size: 1rem;
+}
+
+.site-footer .footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-size-2);
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+/* ---------------------------------------------------------- responsive --- */
+
+@media (max-width: 767px) {
+  body {
+    font-size: 1.0625rem;
+  }
+
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.5rem; }
+
+  .hero .lead {
+    font-size: 1.1875rem;
+  }
+
+  .site-header .header-inner,
+  .site-footer .footer-inner {
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+  }
+
+  /* Stacked control + button. These must outrank the joined-corner rules
+     above — a media query adds no specificity of its own. */
+  .input-group,
+  .input-group .form-control:first-child,
+  .input-group .input-group-btn,
+  .input-group .input-group-btn:last-child > .btn {
+    display: block;
+    width: 100%;
+    border-radius: var(--ds-border-radius-md);
+  }
+
+  .input-group .input-group-btn:last-child > .btn {
+    margin-top: var(--ds-size-2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-bar-striped {
+    animation: none;
+  }
+}

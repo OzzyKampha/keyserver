@@ -18,18 +18,41 @@ services:
     depends_on:
       - mongodb
     networks:
-      - traefik-proxy
+      - proxy
       - backend
     env_file: .env
     security_opt:
       - apparmor=unconfined
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.keyserver.rule=Host(`keyserver.example.com`)"
-      - "traefik.http.routers.keyserver.entrypoints=websecure"
-      - "traefik.http.routers.keyserver.tls.certresolver=acme-le"
-      - "traefik.http.services.keyserver.loadbalancer.server.port=3000"
+
+  caddy:
+    # Built from caddy.Dockerfile rather than the stock image, because the
+    # Coraza WAF module has to be compiled into the Caddy binary.
+    build:
+      context: .
+      dockerfile: caddy.Dockerfile
+    restart: always
+    depends_on:
+      - keyserver
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Country database for the geo matcher. Caddy will not start without it.
+      - ./geoip:/etc/caddy/geoip:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - proxy
+    # Supplies KEYSERVER_ALLOWED_IPS to the Caddyfile allowlist.
+    env_file: .env
+    security_opt:
+      - apparmor=unconfined
 
 networks:
   backend:
-  traefik-proxy:
+  proxy:
+
+volumes:
+  caddy_data:
+  caddy_config:
